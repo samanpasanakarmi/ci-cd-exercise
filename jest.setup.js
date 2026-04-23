@@ -1,4 +1,7 @@
-const { TextEncoder, TextDecoder } = require('util')
+/* global console, global */
 
-global.TextEncoder = TextEncoder
-global.TextDecoder = TextDecoder
+const originalError = console.error
+global.console.error = (...args) => {
+  if (args[0] && args[0].includes && args[0].includes('Warning: ReactDOM.render is no longer supported')) return
+  originalError(...args)
+}
