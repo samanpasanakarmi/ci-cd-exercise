@@ -1,5 +1,5 @@
 import React from 'react'
-import { BrowserRouter as Router, Routes, Route, useMatch } from 'react-router-dom'
+import { Routes, Route, useMatch } from 'react-router-dom'   // No Router import
 import { useApi } from './useApi'
 import LoadingSpinner from './LoadingSpinner'
 import ErrorMessage from './ErrorMessage'
@@ -58,11 +58,7 @@ const App = () => {
     return <ErrorMessage error={error} />
   }
 
-  return (
-    <Router>
-      <AppRoutes pokemonList={pokemonList} />
-    </Router>
-  )
+  return <AppRoutes pokemonList={pokemonList} />   // No Router here
 }
 
 export default App
