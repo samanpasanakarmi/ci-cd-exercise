@@ -1,0 +1,15 @@
+name: Periodic health check
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 8 * * *'
+
+jobs:
+  health_check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check deployed app health
+        run: |
+          curl -f https://fs-pokedex-main-withered-snowflake-9570.fly.dev/health
