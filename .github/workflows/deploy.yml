@@ -29,10 +29,14 @@ jobs:
       - name: Build app
         run: npm run build
 
+      - name: Run tests
+        run: npm test
+
       - name: Setup Flyctl
+        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
         uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Deploy
+      - name: Deploy to Fly.io
         if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
         run: flyctl deploy --remote-only
         env:
@@ -53,17 +57,18 @@ jobs:
           DEFAULT_BUMP: patch
 
   notify_success:
-    needs: [simple_deployment_pipeline]
+    needs: [tag_release]
     runs-on: ubuntu-latest
-    if: ${{ success() && github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
+    if: ${{ success() && github.event_name == 'push' }}
 
     steps:
       - name: Send success notification
-        uses: Ilshidur/action-discord@master
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: sarisia/actions-status-discord@v1
         with:
-          args: "✅ Deployment succeeded for ${{ github.repository }} at commit ${{ github.sha }}"
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: success
+          title: "Deployment Successful 🚀"
+          description: "New version deployed successfully from main branch."
 
   notify_failure:
     needs: [simple_deployment_pipeline]
@@ -72,8 +77,9 @@ jobs:
 
     steps:
       - name: Send failure notification
-        uses: Ilshidur/action-discord@master
-        env:
-          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        uses: sarisia/actions-status-discord@v1
         with:
-          args: "❌ Build failed for ${{ github.repository }} at commit ${{ github.sha }}. Logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: failure
+          title: "Build Failed ❌"
+          description: "Commit ${{ github.sha }} failed. Check logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
