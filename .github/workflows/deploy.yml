@@ -63,12 +63,10 @@ jobs:
 
     steps:
       - name: Send success notification
-        uses: sarisia/actions-status-discord@v1
-        with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK }}
-          status: success
-          title: "Deployment Successful 🚀"
-          description: "New version deployed successfully from main branch."
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{\"content\":\"✅ Deployment Successful: ${{ github.repository }} commit ${{ github.sha }}\"}" \
+            ${{ secrets.DISCORD_WEBHOOK }}
 
   notify_failure:
     needs: [simple_deployment_pipeline]
@@ -77,9 +75,7 @@ jobs:
 
     steps:
       - name: Send failure notification
-        uses: sarisia/actions-status-discord@v1
-        with:
-          webhook: ${{ secrets.DISCORD_WEBHOOK }}
-          status: failure
-          title: "Build Failed ❌"
-          description: "Commit ${{ github.sha }} failed. Check logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+        run: |
+          curl -H "Content-Type: application/json" \
+            -d "{\"content\":\"❌ Build Failed: ${{ github.repository }} commit ${{ github.sha }} Logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            ${{ secrets.DISCORD_WEBHOOK }}
