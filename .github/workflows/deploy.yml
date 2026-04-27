@@ -8,6 +8,9 @@ on:
     branches: [main]
     types: [opened, synchronize]
 
+permissions:
+  contents: write
+
 jobs:
   simple_deployment_pipeline:
     runs-on: ubuntu-latest
@@ -30,7 +33,7 @@ jobs:
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy
-        if: ${{ github.event_name == 'push' }}
+        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
         run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -38,7 +41,7 @@ jobs:
   tag_release:
     needs: [simple_deployment_pipeline]
     runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' }}
+    if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
 
     steps:
       - uses: actions/checkout@v4
@@ -48,3 +51,29 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BUMP: patch
+
+  notify_success:
+    needs: [simple_deployment_pipeline]
+    runs-on: ubuntu-latest
+    if: ${{ success() && github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
+
+    steps:
+      - name: Send success notification
+        uses: Ilshidur/action-discord@master
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        with:
+          args: "✅ Deployment succeeded for ${{ github.repository }} at commit ${{ github.sha }}"
+
+  notify_failure:
+    needs: [simple_deployment_pipeline]
+    runs-on: ubuntu-latest
+    if: ${{ failure() }}
+
+    steps:
+      - name: Send failure notification
+        uses: Ilshidur/action-discord@master
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+        with:
+          args: "❌ Build failed for ${{ github.repository }} at commit ${{ github.sha }}. Logs: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
