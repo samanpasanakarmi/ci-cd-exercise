@@ -12,9 +12,8 @@ permissions:
   contents: write
 
 jobs:
-  simple_deployment_pipeline:
+  build:
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
@@ -29,24 +28,42 @@ jobs:
       - name: Build app
         run: npm run build
 
+  test:
+    needs: [build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
       - name: Run tests
         run: npm test
 
+  deploy:
+    needs: [test]
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
+    steps:
+      - uses: actions/checkout@v4
+
       - name: Setup Flyctl
-        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly.io
-        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
         run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
   tag_release:
-    needs: [simple_deployment_pipeline]
+    needs: [deploy]
     runs-on: ubuntu-latest
     if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
-
     steps:
       - uses: actions/checkout@v4
 
@@ -60,7 +77,6 @@ jobs:
     needs: [tag_release]
     runs-on: ubuntu-latest
     if: ${{ success() && github.event_name == 'push' }}
-
     steps:
       - name: Send success notification
         run: |
@@ -69,10 +85,9 @@ jobs:
             ${{ secrets.DISCORD_WEBHOOK }}
 
   notify_failure:
-    needs: [simple_deployment_pipeline]
+    needs: [build, test, deploy, tag_release]
     runs-on: ubuntu-latest
     if: ${{ failure() }}
-
     steps:
       - name: Send failure notification
         run: |
